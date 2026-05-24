@@ -11,8 +11,8 @@
   "scripts": {
     "build": "tsc",
     "lint": "eslint src tests --ext .ts",
-    "test": "node --test tests/*.test.ts",
-    "prepublishOnly": "npm run build && npm run test"
+    "test": "npm run build && node --test tests/*.test.ts",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "monorepo",
