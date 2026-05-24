@@ -1,0 +1,57 @@
+{
+  "name": "monorepo-switcher",
+  "version": "1.0.0",
+  "description": "Intelligent CLI tool for quickly switching between packages in monorepos with context awareness and smart workspace discovery",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "monorepo-switcher": "dist/cli.js",
+    "mrsw": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src tests --ext .ts",
+    "test": "node --test tests/*.test.ts",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "keywords": [
+    "monorepo",
+    "workspace",
+    "switch",
+    "cli",
+    "package",
+    "navigation",
+    "pnpm",
+    "yarn",
+    "turbo",
+    "nx"
+  ],
+  "author": "Sulthon <hello@sulthon.dev>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sulthonzh/monorepo-switcher"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "inquirer": "^9.2.12",
+    "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.11.16",
+    "@typescript-eslint/eslint-plugin": "^7.0.2",
+    "@typescript-eslint/parser": "^7.0.2",
+    "eslint": "^8.57.0",
+    "typescript": "^5.3.3"
+  }
+}
