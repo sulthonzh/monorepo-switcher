@@ -1,4 +1,6 @@
-export type PackageType = 'node' | 'react' | 'next' | 'react-native' | 'docs' | 'unknown';
+export type PackageType = 'node' | 'react' | 'next' | 'react-native' | 'vue' | 'svelte' | 'docs' | 'unknown';
+
+export type MonorepoTool = 'npm' | 'yarn' | 'pnpm' | 'lerna' | 'turborepo' | 'nx' | 'unknown';
 
 export type GitStatus = 'clean' | 'modified' | 'untracked';
 
@@ -11,6 +13,7 @@ export interface PackageInfo {
   gitStatus: GitStatus;
   recentActivity: Date;
   description?: string;
+  version?: string;
 }
 
 export interface SessionContext {
@@ -28,6 +31,12 @@ export interface MonorepoInfo {
 export interface DiscoveryOptions {
   maxDepth?: number;
   includeNodeModules?: boolean;
+}
+
+export interface MonorepoDetection {
+  tool: MonorepoTool;
+  rootPath: string;
+  workspaceGlobs?: string[];
 }
 
 export interface SwitcherConfig {

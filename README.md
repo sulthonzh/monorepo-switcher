@@ -1,181 +1,135 @@
 # monorepo-switcher
 
-> Intelligent CLI tool for quickly switching between packages in monorepos with context awareness and smart workspace discovery.
+> Jump between packages in your monorepo like you actually know where things are.
 
-## Features
+Stop typing `cd packages/some-long-service-name` fifty times a day. `mrsw` finds your packages, remembers where you've been, and tells you which ones have uncommitted changes.
 
-- 🔍 **Instant Discovery**: Lists all packages in monorepo with one command
-- 🎯 **Smart History**: Remembers recently used packages for quick access
-- 🔥 **Context Awareness**: Shows git status, uncommitted changes, and package types
-- 🚀 **Lightning-Fast Navigation**: `monorepo-switcher backend` takes you directly to the right package
-- 🧠 **Intelligent Search**: Fuzzy search across package names, descriptions, and paths
-- 🎨 **Beautiful CLI**: Colorized output with emoji indicators and clear status badges
+## What it does
 
-## Installation
+- **Discovers packages** — scans your monorepo or reads workspace config (pnpm, yarn, npm, lerna, turborepo, nx)
+- **Shows context** — git status, package type, version, description at a glance
+- **Remembers history** — recent packages are one flag away
+- **Finds dirty packages** — see which packages have uncommitted changes
+- **Fuzzy search** — type part of a name, it finds it
+- **JSON output** — pipe it into anything with `--json`
+
+## Install
 
 ```bash
 npm install -g monorepo-switcher
 ```
 
-Or use the short alias:
-
-```bash
-npm install -g mrsw
-```
+Comes with a short alias: `mrsw`
 
 ## Usage
 
-### Basic Switching
-
 ```bash
 # List all packages
-monorepo-switcher
+mrsw
 
-# Switch to a specific package
-monorepo-switcher backend
+# Switch to a specific package (exact or partial match)
+mrsw backend
+mrsw user-service
 
-# Interactive mode with fuzzy selection
-monorepo-switcher -i
+# Interactive selection
+mrsw -i
 
 # Fuzzy search
-monorepo-switcher --fuzzy "front"
+mrsw --fuzzy "front"
+
+# Recent packages
+mrsw --recent
+mrsw recent -n 3
+
+# Dirty packages (uncommitted changes)
+mrsw --dirty
+mrsw dirty
+
+# Package details
+mrsw info backend
+
+# JSON output (great for scripting)
+mrsw --json
+mrsw dirty --json
+mrsw info backend --json
+
+# Clear history
+mrsw clear
 ```
 
-### Context-Aware Commands
+## JSON Output
+
+Every command supports `--json` for scripting:
 
 ```bash
-# Show only recently used packages
-monorepo-switcher --recent
+# All packages as JSON
+mrsw --json
 
-# Show only packages with uncommitted changes
-monorepo-switcher --dirty
+# Just dirty ones
+mrsw dirty --json
 
-# List all packages (no switching)
-monorepo-switcher --list
+# Package info
+mrsw info my-package --json
 ```
 
-### Special Commands
+Example output:
 
-```bash
-# Show recently used packages (standalone)
-monorepo-switcher recent
-
-# Show recently used packages with custom limit
-monorepo-switcher recent --number 10
-
-# Show packages with uncommitted changes
-monorepo-switcher dirty
-
-# Clear package history
-monorepo-switcher clear
+```json
+{
+  "root": "/projects/my-monorepo",
+  "tool": "pnpm",
+  "packageCount": 8,
+  "packages": [
+    {
+      "name": "@myorg/backend",
+      "path": "/projects/my-monorepo/packages/backend",
+      "type": "node",
+      "version": "2.1.0",
+      "description": "API server",
+      "gitStatus": "clean",
+      "dependencies": 12,
+      "scripts": ["dev", "build", "test"]
+    }
+  ]
+}
 ```
 
-## Output Example
+## Monorepo Detection
 
-```
-📦 Monorepo: /Users/dev/my-project (12 packages)
+Works with any of these out of the box:
 
-🎯 RECENTLY USED:
-├── backend/          ⭐ 2 files modified
-├── frontend/        ✅ clean
-└── shared/          🔥 5 files modified (active)
+- **pnpm** — `pnpm-workspace.yaml`
+- **yarn/npm** — `workspaces` in root `package.json`
+- **turborepo** — `turbo.json`
+- **nx** — `nx.json`
+- **lerna** — `lerna.json`
+- **plain** — falls back to directory scanning
 
-🔍 ALL PACKAGES:
-├── backend/ (Node.js) - REST API service
-├── frontend/ (React) - Web UI
-├── shared/ (TypeScript) - Common utilities
-├── admin/ (React) - Admin dashboard
-├── mobile/ (React Native) - Mobile app
-└── docs/ (Markdown) - Project documentation
-```
+## Package Types
 
-## Status Indicators
+Auto-detects from dependencies:
 
-| Icon | Status |
-|------|--------|
-| ✅ | Clean (no uncommitted changes) |
-| 🔥 | Modified (staged or unstaged changes) |
-| 📋 | Untracked (new files not in git) |
-
-## Package Type Badges
-
-| Badge | Type |
-|-------|------|
-| [React] | React application |
-| [Next] | Next.js application |
-| [RN] | React Native application |
-| [Node] | Node.js package |
-| [Docs] | Documentation package |
-| [Unknown] | Unknown package type |
-
-## How It Works
-
-1. **Auto-discovery**: Scans your monorepo for `package.json` files
-2. **Type detection**: Analyzes dependencies to detect package types
-3. **Git integration**: Checks git status for each package
-4. **Session persistence**: Remembers your workspace context across terminal sessions
+| Type | Detected By |
+|------|------------|
+| Next | `next` + `react` |
+| React Native | `react-native` |
+| Vue | `vue` or `nuxt` |
+| Svelte | `svelte` or `@sveltejs/kit` |
+| React | `react` / `react-dom` |
+| Node | any dependencies |
+| Docs | name contains "doc" |
 
 ## Configuration
 
-Configuration is stored in `~/.monorepo-switcher/config.json`:
+Config stored in `~/.monorepo-switcher/config.json`:
 
 ```json
 {
   "maxRecentPackages": 10,
-  "historyFilePath": "/home/user/.monorepo-switcher/history.json"
+  "historyFilePath": "~/.monorepo-switcher/history.json"
 }
-```
-
-## Monorepo Support
-
-Works out-of-the-box with:
-- pnpm workspaces
-- yarn workspaces
-- npm workspaces
-- Turborepo
-- Nx
-- Lerna
-- Rush
-- Custom monorepo structures
-
-## Use Cases
-
-### Switching to the Backend
-
-```bash
-$ monorepo-switcher backend
-✓ Switched to: backend
-  Path: /Users/dev/my-project/packages/backend
-  Run: cd /Users/dev/my-project/packages/backend
-```
-
-### Finding All Dirty Packages
-
-```bash
-$ monorepo-switcher dirty
-
-🔥 Dirty Packages:
-  🔥 [React] frontend - Web UI
-  🔥 [Node] shared - Common utilities
-```
-
-### Quick Fuzzy Search
-
-```bash
-$ monorepo-switcher --fuzzy "admin"
-✓ Switched to: admin
-  Path: /Users/dev/my-project/packages/admin
-  Run: cd /Users/dev/my-project/packages/admin
 ```
 
 ## License
 
-MIT © [Sulthon](https://github.com/sulthonzh)
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Support
-
-If you encounter any issues or have feature requests, please open an issue on [GitHub](https://github.com/sulthonzh/monorepo-switcher/issues).
+MIT

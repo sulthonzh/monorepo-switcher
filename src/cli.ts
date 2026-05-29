@@ -3,7 +3,7 @@ import inquirer from 'inquirer';
 import chalk from 'chalk';
 import ora from 'ora';
 import { Command } from 'commander';
-import { discoverPackages } from './discovery.js';
+import { discoverPackages, detectMonorepoTool } from './discovery.js';
 import {
   findPackageByName,
   fuzzySearchPackages,
@@ -20,7 +20,7 @@ const program = new Command();
 program
   .name('monorepo-switcher')
   .description('Intelligent CLI tool for quickly switching between packages in monorepos')
-  .version('1.0.0');
+  .version('1.1.0');
 
 function getMonorepoRoot(): string {
   const gitRoot = getGitRoot(process.cwd());
@@ -28,6 +28,19 @@ function getMonorepoRoot(): string {
     return gitRoot;
   }
   return process.cwd();
+}
+
+function packageToJson(pkg: PackageInfo): Record<string, unknown> {
+  return {
+    name: pkg.name,
+    path: pkg.path,
+    type: pkg.type,
+    version: pkg.version || null,
+    description: pkg.description || null,
+    gitStatus: pkg.gitStatus,
+    dependencies: pkg.dependencies.length,
+    scripts: pkg.scripts
+  };
 }
 
 function displayPackage(packageInfo: PackageInfo): string {
@@ -38,14 +51,17 @@ function displayPackage(packageInfo: PackageInfo): string {
   const typeBadge = packageInfo.type === 'react' ? chalk.cyan('[React]') :
                     packageInfo.type === 'next' ? chalk.cyan('[Next]') :
                     packageInfo.type === 'react-native' ? chalk.magenta('[RN]') :
+                    packageInfo.type === 'vue' ? chalk.green('[Vue]') :
+                    packageInfo.type === 'svelte' ? chalk.red('[Svelte]') :
                     packageInfo.type === 'node' ? chalk.green('[Node]') :
                     packageInfo.type === 'docs' ? chalk.gray('[Docs]') :
                     chalk.gray('[Unknown]');
 
   const name = chalk.bold(packageInfo.name);
+  const version = packageInfo.version ? chalk.gray(`@${packageInfo.version}`) : '';
   const desc = packageInfo.description ? chalk.gray(` - ${packageInfo.description}`) : '';
 
-  return `${statusIcon} ${typeBadge} ${name}${desc}`;
+  return `${statusIcon} ${typeBadge} ${name}${version}${desc}`;
 }
 
 function displayPackageList(packages: PackageInfo[], title: string): void {
@@ -93,11 +109,24 @@ program
   .option('-d, --dirty', 'Show only packages with uncommitted changes')
   .option('-i, --interactive', 'Interactive package selection')
   .option('-l, --list', 'List all packages without switching')
+  .option('-j, --json', 'Output as JSON (useful for scripting)')
   .action(async (target: string | undefined, options) => {
     const spinner = ora('Discovering packages...').start();
 
     const root = getMonorepoRoot();
     const packages = discoverPackages(root);
+
+    if (options.json) {
+      spinner.stop();
+      const detection = detectMonorepoTool(root);
+      console.log(JSON.stringify({
+        root,
+        tool: detection.tool,
+        packageCount: packages.length,
+        packages: packages.map(packageToJson)
+      }, null, 2));
+      process.exit(0);
+    }
 
     spinner.succeed(`Found ${packages.length} packages in monorepo`);
 
@@ -123,7 +152,11 @@ program
     }
 
     if (options.list) {
+      const detection = detectMonorepoTool(root);
       console.log(chalk.bold(`\n📦 Monorepo: ${root}`));
+      if (detection.tool !== 'unknown') {
+        console.log(chalk.gray(`  Tool: ${detection.tool}`));
+      }
 
       if (options.recent || options.dirty) {
         displayPackageList(filteredPackages, options.recent ? '🎯 Recently Used' : '🔥 Dirty Packages');
@@ -134,6 +167,7 @@ program
         displayPackageList(packages, '🔍 All Packages');
       }
 
+      console.log(chalk.gray(`\n  ${packages.length} packages total`));
       process.exit(0);
     }
 
@@ -159,6 +193,7 @@ program
   .command('recent')
   .description('Show recently used packages')
   .option('-n, --number <num>', 'Number of recent packages to show', '5')
+  .option('-j, --json', 'Output as JSON')
   .action(async (options) => {
     const root = getMonorepoRoot();
     const packages = discoverPackages(root);
@@ -171,6 +206,11 @@ program
     const count = parseInt(options.number, 10);
     const recent = getRecentPackages({ root, packages, packageCount: packages.length }, count);
 
+    if (options.json) {
+      console.log(JSON.stringify(recent.map(packageToJson), null, 2));
+      process.exit(0);
+    }
+
     console.log(chalk.bold(`\n📦 Monorepo: ${root}`));
     displayPackageList(recent, '🎯 Recently Used');
 
@@ -182,7 +222,8 @@ program
 program
   .command('dirty')
   .description('Show packages with uncommitted changes')
-  .action(async () => {
+  .option('-j, --json', 'Output as JSON')
+  .action(async (options) => {
     const root = getMonorepoRoot();
     const packages = discoverPackages(root);
 
@@ -193,6 +234,11 @@ program
 
     const dirty = getDirtyPackages(packages);
 
+    if (options.json) {
+      console.log(JSON.stringify(dirty.map(packageToJson), null, 2));
+      process.exit(0);
+    }
+
     console.log(chalk.bold(`\n📦 Monorepo: ${root}`));
 
     if (dirty.length === 0) {
@@ -200,6 +246,35 @@ program
     } else {
       displayPackageList(dirty, '🔥 Dirty Packages');
     }
+  });
+
+program
+  .command('info <package>')
+  .description('Show detailed info about a specific package')
+  .option('-j, --json', 'Output as JSON')
+  .action((packageName: string, options) => {
+    const root = getMonorepoRoot();
+    const packages = discoverPackages(root);
+    const pkg = findPackageByName(packages, packageName);
+
+    if (!pkg) {
+      console.log(chalk.red(`\n✗ Package not found: ${packageName}`));
+      process.exit(1);
+    }
+
+    if (options.json) {
+      console.log(JSON.stringify(packageToJson(pkg), null, 2));
+      process.exit(0);
+    }
+
+    console.log(chalk.bold(`\n📦 ${pkg.name}`));
+    if (pkg.version) console.log(chalk.gray(`  Version: ${pkg.version}`));
+    console.log(chalk.gray(`  Path: ${pkg.path}`));
+    console.log(chalk.gray(`  Type: ${pkg.type}`));
+    console.log(chalk.gray(`  Git: ${pkg.gitStatus}`));
+    if (pkg.description) console.log(chalk.gray(`  Description: ${pkg.description}`));
+    console.log(chalk.gray(`  Dependencies: ${pkg.dependencies.length}`));
+    console.log(chalk.gray(`  Scripts: ${pkg.scripts.join(', ') || 'none'}`));
   });
 
 program
