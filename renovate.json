@@ -2,5 +2,14 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "typescript"
+      ],
+      "allowedVersions": "^5.9.3",
+      "description": "cap TS at 5.x: tsconfig uses node10 moduleResolution, TS7 breaks build (flag #20/#27 class)"
+    }
   ]
 }
